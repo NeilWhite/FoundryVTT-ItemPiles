@@ -2005,7 +2005,29 @@ class API {
 
 	}
 
-	/**
+		
+	/** Fix issue with Harvester Mod during looting action 
+	 * @param {string} currencies                               incoming string to modify (eg, "4d6gp") => "16gp"
+	*/
+	static fixCurrency(currencies){
+		// Fix for Better Harvesting and Looting for v12. Comes in as "4d6gp" format.
+		var currencyType = 'empty';
+		var total = 0;
+		function getRandomInt(max) {
+			return Math.floor(Math.random() * max);
+		}
+		var howManyDie = currencies.substring(0,1);
+		var howManySides = currencies.substring(2,3);
+		currencyType = currencies.substring(3,5);
+		for(let i=1; i<howManyDie; i++)
+			{
+				total += getRandomInt(howManySides);
+			}
+		currencies = total.toString() + currencyType; // overwrite incoming format with expected "16gp" string format
+		return currencies; // new format "12gp"
+	}
+
+        /**
 	 * Adds currencies to the target
 	 *
 	 * @param {Actor/Token/TokenDocument} target                The actor to add the currencies to
@@ -2017,25 +2039,24 @@ class API {
 	 */
 	static addCurrencies(target, currencies, { interactionId = false } = {}) {
 
-		const targetActor = Utilities.getActor(target);
-		const targetUuid = Utilities.getUuid(targetActor);
-		if (!targetUuid) throw Helpers.custom_error(`addCurrency | Could not determine the UUID, please provide a valid target`);
-
+		if((/^([0-9]d[0-9][a-z]{2})$/.test(currencies))) // checks "4d6gp" format
+			{
+				currencies = fixCurrency(currencies);
+			}
+			
+		const targetActor = getActor(target);
+		const targetUuid = getUuid(targetActor);
+		if (!targetUuid)
+		throw custom_error(`addCurrency | Could not determine the UUID, please provide a valid target`);
 		if (typeof currencies !== "string") {
-			throw Helpers.custom_error(`addCurrency | currencies must be of type string`)
+		throw custom_error(`addCurrency | currencies must be of type string`);
 		}
-
-		const currenciesToAdd = PileUtilities.getPriceFromString(currencies).currencies
-			.filter(currency => Helpers.isRealNumber(currency.quantity) && currency.quantity > 0);
-
+		const currenciesToAdd = getPriceFromString(currencies).currencies.filter((currency) => isRealNumber(currency.quantity) && currency.quantity > 0);
 		if (!currenciesToAdd.length) {
-			throw Helpers.custom_error(`addCurrency | Could not determine currencies to add with string "${currencies}"`);
+		throw custom_error(`addCurrency | Could not determine currencies to add with string "${currencies}"`);
 		}
-
 		return ItemPileSocket.executeAsGM(ItemPileSocket.HANDLERS.ADD_CURRENCIES, targetUuid, currencies, game.user.id, { interactionId });
-
 	}
-
 	/**
 	 * Removes currencies from the target
 	 *
